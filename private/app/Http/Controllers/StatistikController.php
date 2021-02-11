@@ -4,9 +4,6 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use App\data;
-use DB;
-use PDF;
-use DateTime;
 class StatistikController extends Controller
 {
     /**
@@ -50,9 +47,6 @@ class StatistikController extends Controller
     public function show($id)
     {
         $tanggal =  date('Y-m-d')." ";
-        
-        
-        // $tanggal = "2020-09-30 ";
         $menit = "19";
         $test = [];
        if($id == "temp"){
@@ -304,7 +298,6 @@ class StatistikController extends Controller
         else{
             return "get out boy";
         }
-    
     }
 
     /**
@@ -342,103 +335,66 @@ class StatistikController extends Controller
     }
 
     public function statistik($id,$status,$sensor){
-        function minDay($int){
-            return $date = date('Y-m-d', strtotime("-".$int." day"));
-        }
-        function minWeek($date,$int){
-            return $ok = date('Y-m-d', strtotime("-".$int." day",strtotime($date)));
-        }
-        function checknull($array){
-            $i = 0;
-            foreach($array as $a){
-               if($a !== 0){
-                   $i++;
-               } 
-            }
-            return $i;
-        }
-
         $data = [];
         $label = [];
         $daily = [];
-        $weekly = [];    
-        $currdate = date('Y-m-d');
-
+        $weekly = [];
+        $tanggal =  date('Y-m-d')." ";
+        $temp = "";
         if($status=="today"){
-            $temp = data::where('sensor',$sensor)->where('id_prototype',$id)->whereRaw('date_format(created_at,"%Y-%m-%d")=curdate()')->paginate(8);
-          
+            $temp =  data::where('sensor',$sensor)->where('id_prototype',$id)->whereRaw('date_format(created_at,"%Y-%m-%d")=curdate()')->paginate(8);
+            $i = 1;
+            foreach($temp as $t){
+                $value = intval($t->value);
+                array_push($data,$value);
+                array_push($label,$i);
+                $i ++;
+            }
             return $temp;
         }
         else if($status=="daily"){
-            for($a=6;$a>=0;$a--){
-                $tgl = minDay($a);
-                $query = "SELECT  *, round(AVG(`value`)) as 'avg' FROM `data` WHERE `sensor`='$sensor' AND `id_prototype`='$id' AND date_format(created_at,'%Y-%m-%d') = '$tgl' LIMIT 1"; 
-                $daily = DB::select($query)[0];
-                array_push($data,['created_at'=>$tgl,'value'=> \is_null($daily->avg)?0:$daily->avg]);
+            for($a=1;$a<=7;$a++){
+                $data = [];
+                for($i = 1;$i<=24;$i++){
+                    $value = random_int(25,30);
+                    array_push($data,$value);
+                }
+                $avg = round(array_sum($data)/24);
+                array_push($daily,$avg);
+                array_push($label,$a);
             }
-            // $data = $daily;
-            return $data;
+            $data = $daily;
+            // return $data;
+            return $temp;
         }
         else if($status=="weekly"){
             for($b=1;$b<=4;$b++){
-                $dailys = [];
-                if($b==2){
-                    $currdate = minWeek($currdate,7);
+                $daily = [];
+                for($a=1;$a<=7;$a++){
+                    $data = [];
+                    for($i = 1;$i<=24;$i++){
+                        $value = random_int(25,30);
+                        array_push($data,$value);
+                    }
+                    $avg = round(array_sum($data)/24);
+                    array_push($daily,$avg);
                 }
-                else if($b == 3){
-                    $currdate = minWeek($currdate,7);
-                }
-                else if($b == 4){
-                    $currdate = minWeek($currdate,7);
-                }
-                for($a=7;$a>=1;$a--){
-                    $tgl = minWeek($currdate,$a);
-                    $query = "SELECT  *, round(AVG(`value`)) as 'avg' FROM `data` WHERE `sensor`='$sensor' AND `id_prototype`='$id' AND date_format(created_at,'%Y-%m-%d') = '$tgl' LIMIT 1"; 
-                    $daily = DB::select($query)[0];
-                    array_push($dailys,\is_null($daily->avg)?0:$daily->avg);
-                }
-                $week = checknull($dailys)!==0?round(array_sum($dailys)/checknull($dailys)):0;
+                $week = round(array_sum($daily)/7);
                 array_push($weekly,$week);
+                array_push($label,$b);
             }
 
             $data = $weekly;
-            return $data;
-            // return view('hidroponik.chart',compact('data','label'));
-        }
-        else if($status=="cetak"){
-            $count = data::where('id_prototype',$id)->where('sensor',$sensor)->count()/24; 
-            for($a=$count-2;$a>=0;$a--){
-                $tgl = minDay($a);
-                $query = "SELECT  *, round(AVG(`value`)) as 'avg' FROM `data` WHERE `sensor`='$sensor' AND `id_prototype`='$id' AND date_format(created_at,'%Y-%m-%d') = '$tgl' LIMIT 1"; 
-                $daily = DB::select($query)[0];
-                array_push($data,['created_at'=>$tgl,'value'=> \is_null($daily->avg)?0:$daily->avg]);
-            }
-            if($sensor == "temp"){
-                $sensor = "Temperature";
-                $nama = "C";
-            }
-            else if($sensor == "hum"){
-                $sensor = "Humidity";
-                $nama = "%";
-            }
-            else if($sensor == "wl"){
-                $sensor = "Water Level";
-                $nama = "%";
-            }
-            else{
-                $sensor = "TDS / Pupuk Cair";
-                $nama = "PPM";
-            }
-            $pdf = PDF::loadview("hidroponik.statcetak",["data"=>$data,"id"=>$id,"sensor"=>$sensor,"nama"=>$nama]);
-            // return $pdf->download();
-            return $pdf->download('hidroponikApps.pdf',compact('data','id','sensor','nama'));
-            //    return view("hidroponik.statcetak",compact('data','id','sensor','nama'));
+            return view('hidroponik.chart',compact('data','label'));
         }
         else{
        
-            $temp = data::where('sensor',$sensor)->where('id_prototype',$id)->paginate(8);
-          
-            return $temp;
+            for($i = 1;$i<=24;$i++){
+                $value = random_int(25,30);
+                array_push($data,$value);
+                array_push($label,$i);
+            }
+            return view('hidroponik.chart',compact('data','label'));
         }
     }
 }
